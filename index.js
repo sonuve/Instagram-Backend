@@ -10,7 +10,7 @@ import { app, server } from "./Socket/Socket.js";
 
 dotenv.config({});
 
-const port = process.env.ports || 8080;
+const port = process.env.PORTS || 8080;
 
 // Middleware
 app.use(express.json());
