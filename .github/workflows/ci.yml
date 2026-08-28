@@ -43,5 +43,4 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     
-    - name: Restart Backend
-      run: sudo pm2 restart Backend
+    
