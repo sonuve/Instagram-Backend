@@ -5,44 +5,48 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main" ]
-
+    branches: ["main"]
 
 jobs:
   build:
-
     runs-on: self-hosted
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
-    - name: Backup .env
-      run: |
-          mkdir -p "$RUNNER_TEMP/env-backups"
+      - name: Backup .env
+        run: |
           if [ -f .env ]; then
-            mv .env "$RUNNER_TEMP/env-backups/.env"
+            cp .env /tmp/Instagram-Backend.env
           fi
-          
-    - uses: actions/checkout@v4
-    
-    - name: Restore .env
-      run: |
-          if [ -f $RUNNER_TEMP/env-backups ]; then
-            mv "$RUNNER_TEMP/env-backups/.env .env "
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore .env
+        run: |
+          if [ -f /tmp/Instagram-Backend.env ]; then
+            cp /tmp/Instagram-Backend.env .env
           fi
-       
-      
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - name: Restart Backend
-      run: sudo pm2 restart Backend
-    
-    
+
+      - name: Check .env
+        run: |
+          if [ -f .env ]; then
+            echo ".env file exists"
+          else
+            echo ".env file is missing"
+            exit 1
+          fi
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Restart Backend
+        run: sudo pm2 restart Backend
