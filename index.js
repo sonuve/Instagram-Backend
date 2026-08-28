@@ -30,7 +30,7 @@ app.use("/api/v1/message", messageRouter);
 
 app.get("/show", (req, res) => {
   return res.status(200).json({
-    message: "I am coding from backend",
+    message: "I am coding from backends",
     success: true,
   });
 });
