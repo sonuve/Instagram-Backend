@@ -81,15 +81,13 @@ export const login = async (req, res) => {
       expiresIn: "1d",
     });
 
-    //populate each post if in the posts array
     const populatePost = await Promise.all(
-      user.posts.map(async (postsId) => {
+      (user.posts || []).map(async (postsId) => {
         const post = await Post.findById(postsId);
-        if (post.author.equals(user._id)) {
+        if (post && post.author.equals(user._id)) {
           return post;
-        } else {
-          return null;
         }
+        return null;
       }),
     );
 
@@ -101,13 +99,13 @@ export const login = async (req, res) => {
       bio: user.bio,
       followers: user.followers,
       following: user.following,
-      posts: populatePost,
+      posts: populatePost.filter(Boolean),
     };
 
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "strict",
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
@@ -126,30 +124,29 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
   try {
-    return res.cookie("token", " ", { maxAge: 0 }).json({
-      message: "Logged out Succesfully",
+    return res.cookie("token", "", { maxAge: 0 }).json({
+      message: "Logged out successfully",
       success: true,
     });
   } catch (error) {
-    console.log(error);
+    return res.status(500).json({ message: "Logout failed", success: false });
   }
 };
+
 export const getprofile = async (req, res) => {
   try {
     const userId = req.userId;
 
     const user = await User.findById(userId)
-      .populate({ path: "posts", createAt: -1 })
+      .populate({ path: "posts", options: { sort: { createdAt: -1 } } })
       .populate("bookmarks");
 
     return res.status(200).json({
-      // 🔴 MISTAKE: 201 is for resource creation, use 200 here
       user,
       success: true,
     });
   } catch (error) {
-    // 🔴 MISTAKE: 'Error' → should be 'error' (lowercase for standard)
-    console.error(error);
+    console.error("Error in getprofile:", error);
     return res.status(500).json({
       message: "Internal server error",
       success: false,
@@ -175,29 +172,35 @@ export const editprofile = async (req, res) => {
         success: false,
       });
     }
-    //update the Details
+
     if (bio) user.bio = bio;
     if (gender) user.gender = gender;
     if (profilePicture) user.profilePicture = cloudResponse.secure_url;
     await user.save();
 
     return res.status(200).json({
-      message: "profile is update",
+      message: "Profile updated successfully",
       success: true,
       user,
     });
   } catch (err) {
-    console.log(err);
+    console.error("Error in editprofile:", err);
+    return res.status(500).json({
+      message: "Internal server error",
+      success: false,
+    });
   }
 };
+
 export const getSuggestionUsers = async (req, res) => {
   try {
     const SuggestionUsers = await User.find({
       _id: { $ne: req.userId },
     }).select("-password");
-    if (!SuggestionUsers) {
+
+    if (!SuggestionUsers || SuggestionUsers.length === 0) {
       return res.status(400).json({
-        message: "Currentlt do not have any users",
+        message: "Currently do not have any users",
         success: false,
       });
     }
@@ -206,21 +209,28 @@ export const getSuggestionUsers = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    console.log(err);
+    console.error("Error in getSuggestionUsers:", err);
+    return res.status(500).json({
+      message: "Internal server error",
+      success: false,
+    });
   }
 };
 
 export const followOrunfollow = async (req, res) => {
   try {
-    const youId = req.userId; //sonu ki id hai
-    const toId = req.params.id; //vishal ki id hai
+    const youId = req.userId;
+    const toId = req.params.id;
+
     if (youId === toId) {
       return res.status(400).json({
         message: "You cannot follow/unfollow yourself",
+        success: false,
       });
     }
-    const user = await User.findById({ youId }); //sonu id hai
-    const targetuser = await User.findById({ toId }); //vishal ki id hai
+
+    const user = await User.findById(youId);
+    const targetuser = await User.findById(toId);
 
     if (!user || !targetuser) {
       return res.status(400).json({
@@ -228,20 +238,19 @@ export const followOrunfollow = async (req, res) => {
         success: false,
       });
     }
-    //checked follow and unfollow id
-    const isfollowing = await user.following.includes(toId);
+
+    const isfollowing = user.following.includes(toId);
+
     if (isfollowing) {
-      //unfollow
       await Promise.all([
         User.updateOne({ _id: youId }, { $pull: { following: toId } }),
         User.updateOne({ _id: toId }, { $pull: { followers: youId } }),
       ]);
       return res.status(200).json({
-        message: "UnFollowed successfully",
+        message: "Unfollowed successfully",
         success: true,
       });
     } else {
-      //follow
       await Promise.all([
         User.updateOne({ _id: youId }, { $push: { following: toId } }),
         User.updateOne({ _id: toId }, { $push: { followers: youId } }),
@@ -252,6 +261,10 @@ export const followOrunfollow = async (req, res) => {
       });
     }
   } catch (error) {
-    console.log("Error in followOrUnfollow");
+    console.error("Error in followOrUnfollow:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+      success: false,
+    });
   }
 };
