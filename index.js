@@ -44,7 +44,7 @@ const startServer = async () => {
       console.log(`Server running on http://localhost:${port}`);
     });
   } catch (error) {
-    console.error("Failed to connect to MongoDB:", error);
+    console.error("Failed to connect to MongosDB:", error);
     process.exit(1); // exit if DB fails
   }
 };
