@@ -48,5 +48,5 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
-      - name: Restart Backend
+      - name: Restart Backends
         run: sudo pm2 restart Backend
